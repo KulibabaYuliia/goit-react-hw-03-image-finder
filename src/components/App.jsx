@@ -33,31 +33,35 @@ export class App extends Component {
       theme: 'light',
     });
 
+  fetchPictures = async (searchName, currentPage) => {
+    try {
+      this.setState({ loading: true });
+      const { data } = await fetch(searchName, currentPage);
+
+      if (data.total === 0) {
+        throw new Error('No results found');
+      }
+
+      this.setState(prevState =>
+        prevState.pictures
+          ? {
+              query: data.totalHits,
+              pictures: [...prevState.pictures, ...data.hits],
+            }
+          : { query: data.totalHits, pictures: [...data.hits] }
+      );
+    } catch (error) {
+      this.setState({ pictures: null, query: null });
+      this.notifyNoResultFound(error.message);
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
   componentDidUpdate = async (_, prevState) => {
     const { page, search } = this.state;
     if (page !== prevState.page || search !== prevState.search) {
-      try {
-        this.setState({ loading: true });
-        const { data } = await fetch(search, page);
-
-        if (data.total === 0) {
-          throw new Error('No results found');
-        }
-
-        this.setState(prevState =>
-          prevState.pictures
-            ? {
-                query: data.totalHits,
-                pictures: [...prevState.pictures, ...data.hits],
-              }
-            : { query: data.totalHits, pictures: [...data.hits] }
-        );
-      } catch (error) {
-        this.setState({ pictures: null, page: null, query: null });
-        this.notifyNoResultFound(error.message);
-      } finally {
-        this.setState({ loading: false });
-      }
+      this.fetchPictures(search, page);
     }
   };
 
@@ -89,17 +93,18 @@ export class App extends Component {
     return (
       <StyledApp>
         <Searchbar onSubmit={this.onSubmit}></Searchbar>
-        {!loading && (
-          <ImageGallery
-            pictures={pictures}
-            openModal={this.openModal}
-          ></ImageGallery>
-        )}
+
+        <ImageGallery
+          pictures={pictures}
+          openModal={this.openModal}
+        ></ImageGallery>
+
         {loading && <Loader />}
 
         {page < query / 12 && !loading && (
           <LoadMoreBtn onLoadMoreHandler={this.onLoadMoreHandler} />
         )}
+
         <ToastContainer />
         {this.state.isOpenModal && (
           <Modal
