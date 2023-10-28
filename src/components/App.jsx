@@ -1,86 +1,85 @@
-import { ContactsList } from './ContactsList/ContactsList';
-import { ContactForm } from './ContactForm/ContactForm';
-import { Filter } from './Filter/Filter';
-
+import { ImageGallery } from './ImageGallery/ImageGallery';
+import { Loader } from './Loader/Loader';
+import { Searchbar } from './Searchbar/Searchbar';
+import { LoadMoreBtn } from './Button/Button';
+import { fetch } from './Api/Api';
+import { StyledApp } from './App.styled';
 import React, { Component } from 'react';
-import { nanoid } from 'nanoid';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export class App extends Component {
   state = {
-    contacts: [],
-    filter: '',
+    page: null,
+    query: null,
+    search: null,
+    pictures: null,
+    loading: false,
   };
 
-  componentDidMount = () => {
-    const stringifiedContacts = localStorage.getItem('contacts');
-    const parsedContacts =
-      JSON.parse(stringifiedContacts) ?? this.state.contacts;
+  notifyNoResultFound = error =>
+    toast.error(`${error}`, {
+      position: 'top-right',
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+      theme: 'light',
+    });
 
-    this.setState({ contacts: parsedContacts });
-  };
+  componentDidUpdate = async (_, prevState) => {
+    const { page, search } = this.state;
+    if (page !== prevState.page || search !== prevState.search) {
+      try {
+        this.setState({ loading: true });
+        const { data } = await fetch(search, page);
 
-  componentDidUpdate(_, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      const stringifiedContacts = JSON.stringify(this.state.contacts);
-      localStorage.setItem('contacts', stringifiedContacts);
+        if (data.total === 0) {
+          throw new Error('No results found');
+        }
+
+        this.setState(prevState =>
+          prevState.pictures
+            ? {
+                query: data.totalHits,
+                pictures: [...prevState.pictures, ...data.hits],
+              }
+            : { query: data.totalHits, pictures: [...data.hits] }
+        );
+      } catch (error) {
+        this.setState({ pictures: null, page: null, query: null });
+        this.notifyNoResultFound(error.message);
+      } finally {
+        this.setState({ loading: false });
+      }
     }
-  }
-
-  handleAddContact = contactData => {
-    const hasDuplicates = this.state.contacts.some(
-      contact =>
-        contact.name.toLocaleLowerCase() ===
-        contactData.name.toLocaleLowerCase()
-    );
-
-    if (hasDuplicates) {
-      alert(`${contactData.name} is already in contacts.`);
-      return;
-    }
-
-    contactData.id = nanoid();
-    this.setState(prevState => ({
-      contacts: [contactData, ...prevState.contacts].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      ),
-    }));
   };
 
-  handleDeleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId),
-    }));
+  onSubmit = data => {
+    this.setState({ search: data.search, page: 1 });
   };
 
-  onChangeFilterHandler = e => {
-    this.setState({ filter: e.currentTarget.value });
+  onLoadMoreHandler = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
   };
 
   render() {
-    const normalizedFilter = this.state.filter.toLowerCase();
-    const filteredContacts = this.state.contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizedFilter)
-    );
+    const { loading, pictures, query, page } = this.state;
 
     return (
-      <div
-        style={{
-          padding: '20px',
-          color: '#010101',
-        }}
-      >
-        <h1>Phonebook</h1>
-        <ContactForm handleAddContact={this.handleAddContact} />
-        <h2>Contacts</h2>
-        <Filter
-          fliterValue={this.state.filter}
-          onChangeFilterHandler={this.onChangeFilterHandler}
-        />
-        <ContactsList
-          contacts={filteredContacts}
-          handleDeleteContact={this.handleDeleteContact}
-        />
-      </div>
+      <StyledApp>
+        <Searchbar onSubmit={this.onSubmit}></Searchbar>
+        {!loading && <ImageGallery pictures={pictures}></ImageGallery>}
+        {loading && <Loader />}
+
+        {page < query / 12 && !loading && (
+          <LoadMoreBtn onLoadMoreHandler={this.onLoadMoreHandler} />
+        )}
+        <ToastContainer />
+      </StyledApp>
     );
   }
 }
