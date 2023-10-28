@@ -1,8 +1,8 @@
 import { StyledGalleryItem } from './ImageGalleryItem.styled';
 
-export const Picture = ({ pictureEl }) => {
+export const Picture = ({ pictureEl, openModal }) => {
   return (
-    <StyledGalleryItem>
+    <StyledGalleryItem onClick={openModal}>
       <img src={pictureEl.webformatURL} alt={pictureEl.tags} />
     </StyledGalleryItem>
   );

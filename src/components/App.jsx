@@ -2,6 +2,7 @@ import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Loader } from './Loader/Loader';
 import { Searchbar } from './Searchbar/Searchbar';
 import { LoadMoreBtn } from './Button/Button';
+import { Modal } from './Modal/Modal';
 import { fetch } from './Api/Api';
 import { StyledApp } from './App.styled';
 import React, { Component } from 'react';
@@ -16,6 +17,8 @@ export class App extends Component {
     search: null,
     pictures: null,
     loading: false,
+    isOpenModal: false,
+    modalData: null,
   };
 
   notifyNoResultFound = error =>
@@ -59,11 +62,25 @@ export class App extends Component {
   };
 
   onSubmit = data => {
-    this.setState({ search: data.search, page: 1 });
+    this.setState({ search: data.search, page: 1, pictures: null });
   };
 
   onLoadMoreHandler = () => {
     this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
+  openModal = someDataToModal => {
+    this.setState({
+      isOpenModal: true,
+      modalData: someDataToModal,
+    });
+  };
+
+  closeModal = () => {
+    this.setState({
+      isOpenModal: false,
+      modalData: null,
+    });
   };
 
   render() {
@@ -72,13 +89,24 @@ export class App extends Component {
     return (
       <StyledApp>
         <Searchbar onSubmit={this.onSubmit}></Searchbar>
-        {!loading && <ImageGallery pictures={pictures}></ImageGallery>}
+        {!loading && (
+          <ImageGallery
+            pictures={pictures}
+            openModal={this.openModal}
+          ></ImageGallery>
+        )}
         {loading && <Loader />}
 
         {page < query / 12 && !loading && (
           <LoadMoreBtn onLoadMoreHandler={this.onLoadMoreHandler} />
         )}
         <ToastContainer />
+        {this.state.isOpenModal && (
+          <Modal
+            closeModal={this.closeModal}
+            modalData={this.state.modalData}
+          />
+        )}
       </StyledApp>
     );
   }

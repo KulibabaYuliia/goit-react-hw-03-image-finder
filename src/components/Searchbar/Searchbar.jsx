@@ -15,7 +15,7 @@ let userSchema = yup.object().shape({
 
 export class Searchbar extends Component {
   notifyEmtySearch = () =>
-    toast.warn('Please type search', {
+    toast.warn(`Search shouldn't be empty`, {
       position: 'top-right',
       autoClose: 3000,
       hideProgressBar: false,
